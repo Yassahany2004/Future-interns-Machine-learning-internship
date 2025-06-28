@@ -1,0 +1,108 @@
+import tkinter as tk
+import random
+import numpy as np
+import nltk
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+from nltk.stem import PorterStemmer
+from nltk.corpus import stopwords
+from nltk.tokenize import wordpunct_tokenize
+
+# Download necessary NLTK data
+nltk.download('stopwords')
+
+# Sample training data
+faq_data = {
+    "intents": [
+        {
+            "tag": "greeting",
+            "patterns": ["Hi", "Hello", "Hey", "Good morning", "Good evening"],
+            "responses": ["Hello! How can I help you today?", "Hi there! What can I do for you?"]
+        },
+        {
+            "tag": "order_status",
+            "patterns": ["Where is my order?", "Order status", "Track my order", "Has my order shipped?"],
+            "responses": ["Please provide your order ID so I can check its status."]
+        },
+        {
+            "tag": "return_policy",
+            "patterns": ["What is your return policy?", "Can I return a product?", "How do I return an item?"],
+            "responses": ["You can return any item within 14 days. Please visit our return page for instructions."]
+        },
+        {
+            "tag": "goodbye",
+            "patterns": ["Bye", "Goodbye", "See you", "Thanks, bye"],
+            "responses": ["Goodbye! Have a great day!", "See you soon!"]
+        }
+    ]
+}
+
+# Preprocessing setup
+stemmer = PorterStemmer()
+stop_words = set(stopwords.words('english'))
+
+corpus = []
+labels = []
+all_responses = {}
+
+for intent in faq_data["intents"]:
+    tag = intent["tag"]
+    for pattern in intent["patterns"]:
+        tokens = wordpunct_tokenize(pattern)
+        filtered = [stemmer.stem(w.lower()) for w in tokens if w.lower() not in stop_words]
+        corpus.append(" ".join(filtered))
+        labels.append(tag)
+    all_responses[tag] = intent["responses"]
+
+# Vectorization and training
+vectorizer = CountVectorizer()
+X = vectorizer.fit_transform(corpus)
+y = np.array(labels)
+
+model = MultinomialNB()
+model.fit(X, y)
+
+# Chatbot response function
+def chatbot_response(user_input):
+    tokens = wordpunct_tokenize(user_input)
+    filtered = [stemmer.stem(w.lower()) for w in tokens if w.lower() not in stop_words]
+    input_transformed = vectorizer.transform([" ".join(filtered)])
+    prediction = model.predict(input_transformed)[0]
+    return random.choice(all_responses[prediction])
+
+# GUI
+def send_message():
+    user_input = entry.get()
+    if user_input.strip() == "":
+        return
+    chat_area.insert(tk.END, "You: " + user_input + "\n")
+    entry.delete(0, tk.END)
+
+    if user_input.lower() in ['exit', 'quit', 'bye']:
+        response = random.choice(all_responses["goodbye"])
+        chat_area.insert(tk.END, "Bot: " + response + "\n")
+        return
+
+    response = chatbot_response(user_input)
+    chat_area.insert(tk.END, "Bot: " + response + "\n")
+
+# Create GUI window
+root = tk.Tk()
+root.title("Customer Support Chatbot")
+root.geometry("500x500")
+
+chat_area = tk.Text(root, height=25, width=60, bg="#F0F0F0")
+chat_area.pack(pady=10)
+
+entry = tk.Entry(root, width=40)
+entry.pack(side=tk.LEFT, padx=(10, 5), pady=(0, 10))
+
+send_button = tk.Button(root, text="Send", command=send_message)
+send_button.pack(side=tk.LEFT, padx=(0, 10), pady=(0, 10))
+
+chat_area.insert(tk.END, "Bot: Hello! I'm here to help you. Type 'exit' to leave.\n")
+root.mainloop()
+
+
+
+
