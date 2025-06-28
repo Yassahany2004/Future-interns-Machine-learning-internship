@@ -1,0 +1,76 @@
+# Future-interns-Machine-learning-internship
+# 📊 Sales Forecasting for Retail Business using Dummy Data
+
+# 📦 Import libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from prophet import Prophet
+from sklearn.metrics import mean_absolute_error
+from sklearn.linear_model import LinearRegression
+
+# 🧪 Step 1: Generate dummy sales data (instead of reading from sales.csv)
+date_range = pd.date_range(start="2022-01-01", periods=365, freq='D')
+sales = np.random.poisson(lam=200, size=365)  # random daily sales
+
+# Prophet requires 'ds' for dates and 'y' for values
+df = pd.DataFrame({'ds': date_range, 'y': sales})
+
+# 🖼️ Step 2: Plot the sales trend
+plt.figure(figsize=(10, 6))
+plt.plot(df['ds'], df['y'], label='Sales')
+plt.xlabel('Date')
+plt.ylabel('Sales')
+plt.title('Sales Over Time')
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# 🔮 Step 3: Forecast using Prophet
+model = Prophet()
+model.fit(df)
+
+future = model.make_future_dataframe(periods=90)  # predict next 90 days
+forecast = model.predict(future)
+
+# Plot forecast
+fig1 = model.plot(forecast)
+fig2 = model.plot_components(forecast)
+
+# 📈 Step 4: Forecast evaluation (using last 90 days as test)
+train = df[:-90]
+test = df[-90:]
+
+model2 = Prophet()
+model2.fit(train)
+
+future2 = model2.make_future_dataframe(periods=90)
+forecast2 = model2.predict(future2)
+
+predicted = forecast2[-90:]['yhat'].values
+actual = test['y'].values
+
+mae = mean_absolute_error(actual, predicted)
+print(f"\n📉 Mean Absolute Error on test set: {mae:.2f}")
+
+# 📊 Step 5: Linear Regression (optional comparison)
+df['timestamp'] = df['ds'].map(pd.Timestamp.timestamp)
+X = df[['timestamp']]
+y = df['y']
+
+lr_model = LinearRegression()
+lr_model.fit(X, y)
+lr_preds = lr_model.predict(X)
+
+# Plot regression vs actual sales
+plt.figure(figsize=(10, 6))
+plt.plot(df['ds'], y, label='Actual Sales')
+plt.plot(df['ds'], lr_preds, label='Linear Regression Trend', linestyle='--')
+plt.xlabel('Date')
+plt.ylabel('Sales')
+plt.title('Actual Sales vs. Linear Regression Trend')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
